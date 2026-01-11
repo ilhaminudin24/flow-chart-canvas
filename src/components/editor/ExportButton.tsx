@@ -18,6 +18,7 @@ interface ExportButtonProps {
   theme?: MermaidTheme;
   code: string;
   diagramType: DiagramType;
+  projectTitle?: string;
 }
 
 // Theme background colors
@@ -28,7 +29,7 @@ const themeBackgrounds: Record<MermaidTheme, string> = {
   neutral: '#f5f5f5', // neutral-100
 };
 
-export const ExportButton = ({ svgOutput, isValid, theme = 'default', code, diagramType }: ExportButtonProps) => {
+export const ExportButton = ({ svgOutput, isValid, theme = 'default', code, diagramType, projectTitle }: ExportButtonProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
   const bgColor = themeBackgrounds[theme] || themeBackgrounds.default;
@@ -80,7 +81,7 @@ export const ExportButton = ({ svgOutput, isValid, theme = 'default', code, diag
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement('a');
-    link.download = 'diagram.svg';
+    link.download = `${generateFilename(diagramType, projectTitle)}.svg`;
     link.href = url;
     link.click();
 
@@ -210,9 +211,9 @@ export const ExportButton = ({ svgOutput, isValid, theme = 'default', code, diag
         const quality = format === 'png' ? 1 : 0.95;
         const dataUrl = canvas.toDataURL(mimeType, quality);
 
-        // Download
         const link = document.createElement('a');
-        link.download = `diagram.${format}`;
+        link.download = `${generateFilename(diagramType, projectTitle)}.${format}`;
+        link.href = dataUrl;
         link.href = dataUrl;
         link.click();
 
@@ -282,7 +283,7 @@ export const ExportButton = ({ svgOutput, isValid, theme = 'default', code, diag
     }
 
     try {
-      const filename = generateFilename(diagramType);
+      const filename = generateFilename(diagramType, projectTitle);
 
       if (format === 'mmd') {
         exportAsMermaid(code, filename);

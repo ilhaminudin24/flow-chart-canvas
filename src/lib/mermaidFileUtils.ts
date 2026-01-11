@@ -178,10 +178,19 @@ export function getAcceptedFileTypes(): string {
 }
 
 /**
- * Generate suggested filename based on diagram type and current date
+ * Generate suggested filename based on diagram type, title, and current date
+ * Format: Title_YYYY-MM-DD_diagramType (if title provided)
+ * Fallback: diagramType-YYYY-MM-DD (if no title)
  */
-export function generateFilename(diagramType: DiagramType): string {
+export function generateFilename(diagramType: DiagramType, title?: string): string {
     const date = new Date();
     const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Use title if provided, sanitize for valid filename
+    if (title && title.trim()) {
+        const sanitizedTitle = title.trim().replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_');
+        return `${sanitizedTitle}_${dateStr}_${diagramType}`;
+    }
+
     return `${diagramType}-${dateStr}`;
 }

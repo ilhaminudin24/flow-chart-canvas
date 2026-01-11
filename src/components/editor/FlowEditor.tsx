@@ -18,6 +18,7 @@ export const FlowEditor = () => {
     code,
     diagramType,
     theme,
+    projectTitle,
     isValid,
     error,
     svgOutput,
@@ -25,6 +26,7 @@ export const FlowEditor = () => {
     setCode,
     setDiagramType,
     setTheme,
+    setProjectTitle,
     resetToTemplate,
     undo,
     redo,
@@ -133,11 +135,13 @@ export const FlowEditor = () => {
       <Toolbar
         diagramType={diagramType}
         theme={theme}
+        projectTitle={projectTitle}
         isValid={isValid}
         svgOutput={svgOutput}
         code={code}
         onDiagramTypeChange={setDiagramType}
         onThemeChange={setTheme}
+        onProjectTitleChange={setProjectTitle}
         onReset={resetToTemplate}
         onImport={importProject}
         canUndo={canUndo}

@@ -10,10 +10,11 @@ const DEBOUNCE_MS = 300;
 interface EditorSettings {
   diagramType: DiagramType;
   theme: MermaidTheme;
+  projectTitle: string;
 }
 
 export const useDiagramEditor = () => {
-  // Settings (diagram type, theme) - not part of undo/redo history
+  // Settings (diagram type, theme, projectTitle) - not part of undo/redo history
   const [settings, setSettings] = useState<EditorSettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -22,6 +23,7 @@ export const useDiagramEditor = () => {
         return {
           diagramType: parsed.diagramType || 'flowchart',
           theme: parsed.theme || 'default',
+          projectTitle: parsed.projectTitle || '',
         };
       } catch {
         // ignore
@@ -30,6 +32,7 @@ export const useDiagramEditor = () => {
     return {
       diagramType: 'flowchart' as DiagramType,
       theme: 'default' as MermaidTheme,
+      projectTitle: '',
     };
   });
 
@@ -135,6 +138,7 @@ export const useDiagramEditor = () => {
       code: codeHistory.state,
       diagramType: settings.diagramType,
       theme: settings.theme,
+      projectTitle: settings.projectTitle,
       isValid,
       error,
     };
@@ -156,6 +160,10 @@ export const useDiagramEditor = () => {
     setSettings(prev => ({ ...prev, theme }));
   }, []);
 
+  const setProjectTitle = useCallback((projectTitle: string) => {
+    setSettings(prev => ({ ...prev, projectTitle }));
+  }, []);
+
   const resetToTemplate = useCallback(() => {
     const newCode = getDefaultCode(settings.diagramType);
     codeHistory.set(newCode);
@@ -168,15 +176,17 @@ export const useDiagramEditor = () => {
     code: string;
     diagramType?: DiagramType;
     theme?: MermaidTheme;
+    title?: string;
   }) => {
     if (data.code) {
       codeHistory.set(data.code);
     }
-    if (data.diagramType || data.theme) {
+    if (data.diagramType || data.theme || data.title !== undefined) {
       setSettings(prev => ({
         ...prev,
         ...(data.diagramType && { diagramType: data.diagramType }),
         ...(data.theme && { theme: data.theme }),
+        ...(data.title !== undefined && { projectTitle: data.title }),
       }));
     }
   }, [codeHistory]);
@@ -185,6 +195,7 @@ export const useDiagramEditor = () => {
     code: codeHistory.state,
     diagramType: settings.diagramType,
     theme: settings.theme,
+    projectTitle: settings.projectTitle,
     isValid,
     error,
     svgOutput,
@@ -192,6 +203,7 @@ export const useDiagramEditor = () => {
     setCode,
     setDiagramType,
     setTheme,
+    setProjectTitle,
     resetToTemplate,
     importProject,
     // Undo/Redo

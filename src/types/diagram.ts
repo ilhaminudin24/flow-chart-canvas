@@ -29,6 +29,7 @@ export interface EditorState {
   code: string;
   diagramType: DiagramType;
   theme: MermaidTheme;
+  projectTitle?: string;
   isValid: boolean;
   error: string | null;
 }

@@ -3,6 +3,7 @@ import { DiagramTypeSelector } from './DiagramTypeSelector';
 import { ThemeSelector } from './ThemeSelector';
 import { ExportButton } from './ExportButton';
 import { ImportButton } from './ImportButton';
+import { ProjectTitle } from './ProjectTitle';
 import { RotateCcw, FileText, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -10,13 +11,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface ToolbarProps {
   diagramType: DiagramType;
   theme: MermaidTheme;
+  projectTitle: string;
   isValid: boolean;
   svgOutput: string;
   code: string;
   onDiagramTypeChange: (type: DiagramType) => void;
   onThemeChange: (theme: MermaidTheme) => void;
+  onProjectTitleChange: (title: string) => void;
   onReset: () => void;
-  onImport: (data: { code: string; diagramType?: DiagramType; theme?: MermaidTheme }) => void;
+  onImport: (data: { code: string; diagramType?: DiagramType; theme?: MermaidTheme; title?: string }) => void;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -26,11 +29,13 @@ interface ToolbarProps {
 export const Toolbar = ({
   diagramType,
   theme,
+  projectTitle,
   isValid,
   svgOutput,
   code,
   onDiagramTypeChange,
   onThemeChange,
+  onProjectTitleChange,
   onReset,
   onImport,
   canUndo = false,
@@ -50,6 +55,10 @@ export const Toolbar = ({
             <span className="text-gradient">FlowGen</span>
           </h1>
         </div>
+
+        <div className="w-px h-6 bg-border hidden sm:block" />
+
+        <ProjectTitle value={projectTitle} onChange={onProjectTitleChange} />
 
         <div className="w-px h-6 bg-border hidden sm:block" />
 
@@ -129,7 +138,7 @@ export const Toolbar = ({
 
         <ImportButton onImport={onImport} />
 
-        <ExportButton svgOutput={svgOutput} isValid={isValid} theme={theme} code={code} diagramType={diagramType} />
+        <ExportButton svgOutput={svgOutput} isValid={isValid} theme={theme} code={code} diagramType={diagramType} projectTitle={projectTitle} />
       </div>
     </header>
   );

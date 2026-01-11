@@ -11,6 +11,7 @@ interface ImportButtonProps {
         code: string;
         diagramType?: DiagramType;
         theme?: MermaidTheme;
+        title?: string;
     }) => void;
 }
 
@@ -32,6 +33,7 @@ export const ImportButton = ({ onImport }: ImportButtonProps) => {
                 code: data.code,
                 diagramType: data.diagramType,
                 theme: data.theme,
+                title: data.title,
             });
 
             toast({
