@@ -7,9 +7,11 @@ interface StatusBarProps {
   isRendering: boolean;
   diagramType: DiagramType;
   codeLength: number;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-export const StatusBar = ({ isValid, isRendering, diagramType, codeLength }: StatusBarProps) => {
+export const StatusBar = ({ isValid, isRendering, diagramType, codeLength, canUndo, canRedo }: StatusBarProps) => {
   return (
     <footer className="h-7 bg-muted/30 border-t border-border px-4 flex items-center justify-between text-xs text-muted-foreground">
       <div className="flex items-center gap-4">
@@ -42,12 +44,13 @@ export const StatusBar = ({ isValid, isRendering, diagramType, codeLength }: Sta
       <div className="flex items-center gap-4">
         {/* Character count */}
         <span>{codeLength} chars</span>
-        
+
         <div className="w-px h-3 bg-border" />
-        
-        {/* Keyboard hint */}
-        <span className="hidden sm:block">Ctrl+Wheel to zoom</span>
+
+        {/* Keyboard hints */}
+        <span className="hidden sm:block">Ctrl+Z Undo • Ctrl+Y Redo • Ctrl+Wheel Zoom</span>
       </div>
     </footer>
   );
 };
+

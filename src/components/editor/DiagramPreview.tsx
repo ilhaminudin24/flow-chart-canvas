@@ -1,23 +1,56 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, MutableRefObject, useCallback } from 'react';
 import { MermaidTheme } from '@/types/diagram';
 import { motion } from 'framer-motion';
-import { ZoomIn, ZoomOut, RotateCcw, Move } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Move, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+
+interface ZoomControls {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
+}
+
+interface EditState {
+  isEditing: boolean;
+  originalText: string;
+  newText: string;
+  position: { x: number; y: number };
+}
 
 interface DiagramPreviewProps {
   svgOutput: string;
   theme: MermaidTheme;
   isRendering: boolean;
   isValid: boolean;
+  zoomRef?: MutableRefObject<ZoomControls>;
+  onRename?: (oldText: string, newText: string) => void;
 }
 
-export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: DiagramPreviewProps) => {
+export const DiagramPreview = ({
+  svgOutput,
+  theme,
+  isRendering,
+  isValid,
+  zoomRef,
+  onRename
+}: DiagramPreviewProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const diagramRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+
+  // Edit state
+  const [editState, setEditState] = useState<EditState>({
+    isEditing: false,
+    originalText: '',
+    newText: '',
+    position: { x: 0, y: 0 }
+  });
 
   const handleZoomIn = () => setScale(prev => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.25));
@@ -25,6 +58,25 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
     setScale(1);
     setPosition({ x: 0, y: 0 });
   };
+
+  // Expose zoom controls via ref for keyboard shortcuts
+  useEffect(() => {
+    if (zoomRef) {
+      zoomRef.current = {
+        zoomIn: handleZoomIn,
+        zoomOut: handleZoomOut,
+        reset: handleReset,
+      };
+    }
+  }, [zoomRef]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editState.isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editState.isEditing]);
 
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -35,6 +87,9 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Don't start drag if clicking on editable text or already editing
+    if (editState.isEditing) return;
+
     if (e.button === 0) {
       setIsDragging(true);
       dragStartRef.current = {
@@ -55,6 +110,134 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  /**
+   * Get text from the nearest text element for a clicked SVG element
+   * This handles cases where user clicks on rect/path but we need the sibling text
+   */
+  const findTextForElement = (element: Element): string | null => {
+    // If it's already a text/tspan, return its content
+    if (element.tagName.toLowerCase() === 'tspan') {
+      return element.textContent?.trim() || null;
+    }
+    if (element.tagName.toLowerCase() === 'text') {
+      const tspan = element.querySelector('tspan');
+      return tspan ? tspan.textContent?.trim() || null : element.textContent?.trim() || null;
+    }
+    
+    // For rect/path with .actor class, find sibling text with same class
+    const parent = element.parentElement;
+    if (parent) {
+      // Look for sibling text element
+      const siblingText = parent.querySelector('text.actor, text.messageText, text');
+      if (siblingText) {
+        const tspan = siblingText.querySelector('tspan');
+        return tspan ? tspan.textContent?.trim() || null : siblingText.textContent?.trim() || null;
+      }
+    }
+    
+    return null;
+  };
+
+  /**
+   * Handle click on diagram - detect text elements for editing
+   */
+  const handleDiagramClick = useCallback((e: React.MouseEvent) => {
+    if (!onRename || isDragging) return;
+
+    const target = e.target as Element;
+    const tagName = target.tagName.toLowerCase();
+    
+    let text = '';
+    
+    // Direct click on tspan - cleanest case
+    if (tagName === 'tspan') {
+      text = target.textContent?.trim() || '';
+    }
+    // Direct click on text element
+    else if (tagName === 'text') {
+      const tspan = target.querySelector('tspan');
+      text = tspan ? tspan.textContent?.trim() || '' : target.textContent?.trim() || '';
+    }
+    // Click on rect/path/polygon (shape elements) - find associated text
+    else if (['rect', 'path', 'polygon', 'circle', 'ellipse', 'line'].includes(tagName)) {
+      // Check if this is an actor box or node shape
+      if (target.classList.contains('actor') || target.closest('.actor') || target.closest('.node')) {
+        text = findTextForElement(target) || '';
+      }
+    }
+    // Click on foreignObject content (flowchart nodes use this)
+    else if (target.closest('foreignObject')) {
+      const fo = target.closest('foreignObject');
+      if (fo) {
+        // Get the label div inside foreignObject
+        const labelDiv = fo.querySelector('.nodeLabel, .label, span, div');
+        if (labelDiv) {
+          // Use innerText to avoid getting nested styles
+          text = (labelDiv as HTMLElement).innerText?.trim() || '';
+        }
+      }
+    }
+    // Click on span/div inside SVG (some Mermaid diagrams use HTML in foreignObject)
+    else if (tagName === 'span' || tagName === 'div' || tagName === 'p') {
+      text = (target as HTMLElement).innerText?.trim() || '';
+    }
+    
+    // Only proceed if we found valid text
+    if (!text) return;
+    
+    // Filter out CSS-like content (safety check)
+    if (text.includes('{') || text.includes('}') || text.match(/#[a-f0-9]{6,}/i)) {
+      return;
+    }
+    
+    e.stopPropagation();
+    e.preventDefault();
+
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+
+    setEditState({
+      isEditing: true,
+      originalText: text,
+      newText: text,
+      position: {
+        x: e.clientX - containerRect.left,
+        y: e.clientY - containerRect.top
+      }
+    });
+  }, [onRename, isDragging]);
+
+  const handleEditSubmit = () => {
+    if (editState.newText && editState.newText !== editState.originalText) {
+      onRename?.(editState.originalText, editState.newText);
+    }
+    setEditState({
+      isEditing: false,
+      originalText: '',
+      newText: '',
+      position: { x: 0, y: 0 }
+    });
+  };
+
+  const handleEditCancel = () => {
+    setEditState({
+      isEditing: false,
+      originalText: '',
+      newText: '',
+      position: { x: 0, y: 0 }
+    });
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleEditSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleEditCancel();
+    }
   };
 
   useEffect(() => {
@@ -99,6 +282,9 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
         </Button>
         <div className="flex-1" />
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Edit3 className="h-3 w-3" />
+          <span>Click text to edit</span>
+          <span className="mx-1">|</span>
           <Move className="h-3 w-3" />
           <span>Drag to pan</span>
         </div>
@@ -110,7 +296,7 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
         className={cn(
           'flex-1 overflow-hidden relative',
           bgClass,
-          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+          editState.isEditing ? 'cursor-default' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
         )}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
@@ -118,7 +304,7 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
         onMouseUp={handleMouseUp}
       >
         {/* Grid pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)',
@@ -145,6 +331,7 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
 
         {isValid && svgOutput && (
           <motion.div
+            ref={diagramRef}
             className="absolute inset-0 flex items-center justify-center p-8"
             style={{
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -152,9 +339,13 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: scale }}
             transition={{ duration: 0.15 }}
+            onClick={handleDiagramClick}
           >
             <div
-              className="diagram-render"
+              className={cn(
+                "diagram-render",
+                onRename && "[&_text]:cursor-pointer [&_text]:hover:fill-primary [&_.nodeLabel]:cursor-pointer [&_.actor]:cursor-pointer"
+              )}
               dangerouslySetInnerHTML={{ __html: svgOutput }}
             />
           </motion.div>
@@ -167,7 +358,35 @@ export const DiagramPreview = ({ svgOutput, theme, isRendering, isValid }: Diagr
             </div>
           </div>
         )}
+
+        {/* Inline Edit Overlay */}
+        {editState.isEditing && (
+          <div
+            className="absolute z-50"
+            style={{
+              left: editState.position.x,
+              top: editState.position.y,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            <div className="bg-popover border border-border rounded-lg shadow-lg p-2 flex gap-2 items-center">
+              <Input
+                ref={inputRef}
+                value={editState.newText}
+                onChange={(e) => setEditState(prev => ({ ...prev, newText: e.target.value }))}
+                onKeyDown={handleEditKeyDown}
+                onBlur={handleEditSubmit}
+                className="h-8 w-40 text-sm"
+                placeholder="Enter new name..."
+              />
+              <Button size="sm" className="h-8" onClick={handleEditSubmit}>
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+

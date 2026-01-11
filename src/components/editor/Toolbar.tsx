@@ -2,7 +2,7 @@ import { DiagramType, MermaidTheme } from '@/types/diagram';
 import { DiagramTypeSelector } from './DiagramTypeSelector';
 import { ThemeSelector } from './ThemeSelector';
 import { ExportButton } from './ExportButton';
-import { RotateCcw, Github, FileText } from 'lucide-react';
+import { RotateCcw, FileText, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -14,6 +14,10 @@ interface ToolbarProps {
   onDiagramTypeChange: (type: DiagramType) => void;
   onThemeChange: (theme: MermaidTheme) => void;
   onReset: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export const Toolbar = ({
@@ -24,6 +28,10 @@ export const Toolbar = ({
   onDiagramTypeChange,
   onThemeChange,
   onReset,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
 }: ToolbarProps) => {
   return (
     <header className="h-14 bg-toolbar-bg border-b border-border px-4 flex items-center justify-between">
@@ -37,34 +45,76 @@ export const Toolbar = ({
             <span className="text-gradient">FlowGen</span>
           </h1>
         </div>
-        
+
         <div className="w-px h-6 bg-border hidden sm:block" />
-        
+
         <DiagramTypeSelector value={diagramType} onChange={onDiagramTypeChange} />
       </div>
 
       {/* Right section - Actions */}
-      <div className="flex items-center gap-2">
-        <ThemeSelector value={theme} onChange={onThemeChange} />
-        
-        <div className="w-px h-6 bg-border hidden sm:block" />
-        
+      <div className="flex items-center gap-1">
+        {/* Undo/Redo buttons */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={onReset} className="h-8 w-8 p-0">
-              <RotateCcw className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="h-8 w-8 p-0"
+              aria-label="Undo"
+            >
+              <Undo2 className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Reset to template</TooltipContent>
+          <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
         </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="h-8 w-8 p-0"
+              aria-label="Redo"
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
+
+        <ThemeSelector value={theme} onChange={onThemeChange} />
+
+        <div className="w-px h-6 bg-border hidden sm:block" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onReset}
+              className="h-8 w-8 p-0"
+              aria-label="Reset to template"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Reset to template (Ctrl+R)</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-8 w-8 p-0"
               onClick={() => window.open('https://mermaid.js.org/intro/', '_blank')}
+              aria-label="Mermaid documentation"
             >
               <FileText className="h-4 w-4" />
             </Button>
@@ -72,7 +122,7 @@ export const Toolbar = ({
           <TooltipContent>Mermaid Docs</TooltipContent>
         </Tooltip>
 
-        <ExportButton svgOutput={svgOutput} isValid={isValid} />
+        <ExportButton svgOutput={svgOutput} isValid={isValid} theme={theme} />
       </div>
     </header>
   );

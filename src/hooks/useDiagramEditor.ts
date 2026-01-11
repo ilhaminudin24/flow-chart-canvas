@@ -1,68 +1,112 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { DiagramType, MermaidTheme, EditorState } from '@/types/diagram';
 import { getDefaultCode } from '@/lib/diagramTemplates';
+import { useHistory } from './useHistory';
 import mermaid from 'mermaid';
 
 const STORAGE_KEY = 'flowgen-diagram-state';
 const DEBOUNCE_MS = 300;
 
+interface EditorSettings {
+  diagramType: DiagramType;
+  theme: MermaidTheme;
+}
+
 export const useDiagramEditor = () => {
-  const [state, setState] = useState<EditorState>(() => {
+  // Settings (diagram type, theme) - not part of undo/redo history
+  const [settings, setSettings] = useState<EditorSettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          diagramType: parsed.diagramType || 'flowchart',
+          theme: parsed.theme || 'default',
+        };
       } catch {
         // ignore
       }
     }
     return {
-      code: getDefaultCode('flowchart'),
       diagramType: 'flowchart' as DiagramType,
       theme: 'default' as MermaidTheme,
-      isValid: true,
-      error: null
     };
   });
 
+  // Code with undo/redo history
+  const getInitialCode = () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.code || getDefaultCode('flowchart');
+      } catch {
+        // ignore
+      }
+    }
+    return getDefaultCode('flowchart');
+  };
+
+  const codeHistory = useHistory<string>(getInitialCode());
+
+  // Validation state
+  const [isValid, setIsValid] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [svgOutput, setSvgOutput] = useState<string>('');
   const [isRendering, setIsRendering] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initialize mermaid
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
-      theme: state.theme,
+      theme: settings.theme,
+      // Use 'loose' security to allow HTML labels to render properly
+      // Combined with htmlLabels: false, this ensures labels always render as SVG text
       securityLevel: 'loose',
+      maxTextSize: 50000,
       fontFamily: 'Inter, system-ui, sans-serif',
+      // Disable HTML labels to use SVG text elements which render more reliably
+      flowchart: {
+        htmlLabels: false,
+      },
     });
-  }, [state.theme]);
+  }, [settings.theme]);
 
   // Render diagram
   const renderDiagram = useCallback(async (code: string, theme: MermaidTheme) => {
     if (!code.trim()) {
       setSvgOutput('');
-      setState(prev => ({ ...prev, isValid: true, error: null }));
+      setIsValid(true);
+      setError(null);
       return;
     }
 
     setIsRendering(true);
-    
+
     try {
       mermaid.initialize({
         startOnLoad: false,
         theme: theme,
+        // Use 'loose' security to allow HTML labels to render properly
+        // Combined with htmlLabels: false, this ensures labels always render as SVG text
         securityLevel: 'loose',
+        maxTextSize: 50000,
         fontFamily: 'Inter, system-ui, sans-serif',
+        // Disable HTML labels to use SVG text elements which render more reliably
+        flowchart: {
+          htmlLabels: false,
+        },
       });
 
       const { svg } = await mermaid.render(`mermaid-${Date.now()}`, code);
       setSvgOutput(svg);
-      setState(prev => ({ ...prev, isValid: true, error: null }));
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Invalid diagram syntax';
-      setState(prev => ({ ...prev, isValid: false, error: errorMessage }));
+      setIsValid(true);
+      setError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid diagram syntax';
+      setIsValid(false);
+      setError(errorMessage);
     } finally {
       setIsRendering(false);
     }
@@ -75,7 +119,7 @@ export const useDiagramEditor = () => {
     }
 
     debounceRef.current = setTimeout(() => {
-      renderDiagram(state.code, state.theme);
+      renderDiagram(codeHistory.state, settings.theme);
     }, DEBOUNCE_MS);
 
     return () => {
@@ -83,42 +127,56 @@ export const useDiagramEditor = () => {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [state.code, state.theme, renderDiagram]);
+  }, [codeHistory.state, settings.theme, renderDiagram]);
 
   // Save to localStorage
   useEffect(() => {
+    const state: EditorState = {
+      code: codeHistory.state,
+      diagramType: settings.diagramType,
+      theme: settings.theme,
+      isValid,
+      error,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+  }, [codeHistory.state, settings, isValid, error]);
 
   const setCode = useCallback((code: string) => {
-    setState(prev => ({ ...prev, code }));
-  }, []);
+    codeHistory.set(code);
+  }, [codeHistory]);
 
   const setDiagramType = useCallback((diagramType: DiagramType) => {
     const newCode = getDefaultCode(diagramType);
-    setState(prev => ({ ...prev, diagramType, code: newCode }));
-  }, []);
+    setSettings(prev => ({ ...prev, diagramType }));
+    codeHistory.set(newCode);
+    codeHistory.clear(); // Clear history when changing diagram type
+  }, [codeHistory]);
 
   const setTheme = useCallback((theme: MermaidTheme) => {
-    setState(prev => ({ ...prev, theme }));
+    setSettings(prev => ({ ...prev, theme }));
   }, []);
 
   const resetToTemplate = useCallback(() => {
-    const newCode = getDefaultCode(state.diagramType);
-    setState(prev => ({ ...prev, code: newCode }));
-  }, [state.diagramType]);
+    const newCode = getDefaultCode(settings.diagramType);
+    codeHistory.set(newCode);
+  }, [settings.diagramType, codeHistory]);
 
   return {
-    code: state.code,
-    diagramType: state.diagramType,
-    theme: state.theme,
-    isValid: state.isValid,
-    error: state.error,
+    code: codeHistory.state,
+    diagramType: settings.diagramType,
+    theme: settings.theme,
+    isValid,
+    error,
     svgOutput,
     isRendering,
     setCode,
     setDiagramType,
     setTheme,
-    resetToTemplate
+    resetToTemplate,
+    // Undo/Redo
+    undo: codeHistory.undo,
+    redo: codeHistory.redo,
+    canUndo: codeHistory.canUndo,
+    canRedo: codeHistory.canRedo,
   };
 };
