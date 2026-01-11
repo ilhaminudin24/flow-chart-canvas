@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { Download, ChevronDown, Image, FileCode, FileImage } from 'lucide-react';
+import { Download, ChevronDown, Image, FileCode, FileImage, FileText, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
-import { MermaidTheme } from '@/types/diagram';
+import { MermaidTheme, DiagramType } from '@/types/diagram';
+import { exportAsMermaid, exportAsProject, generateFilename } from '@/lib/mermaidFileUtils';
 
 interface ExportButtonProps {
   svgOutput: string;
   isValid: boolean;
   theme?: MermaidTheme;
+  code: string;
+  diagramType: DiagramType;
 }
 
 // Theme background colors
@@ -24,7 +28,7 @@ const themeBackgrounds: Record<MermaidTheme, string> = {
   neutral: '#f5f5f5', // neutral-100
 };
 
-export const ExportButton = ({ svgOutput, isValid, theme = 'default' }: ExportButtonProps) => {
+export const ExportButton = ({ svgOutput, isValid, theme = 'default', code, diagramType }: ExportButtonProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
   const bgColor = themeBackgrounds[theme] || themeBackgrounds.default;
@@ -264,6 +268,42 @@ export const ExportButton = ({ svgOutput, isValid, theme = 'default' }: ExportBu
     }
   };
 
+  /**
+   * Handle code export (Mermaid syntax or project file)
+   */
+  const handleCodeExport = (format: 'mmd' | 'flowilham') => {
+    if (!code) {
+      toast({
+        title: 'Cannot export',
+        description: 'No diagram code to export.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const filename = generateFilename(diagramType);
+
+      if (format === 'mmd') {
+        exportAsMermaid(code, filename);
+      } else {
+        exportAsProject(code, diagramType, theme, filename);
+      }
+
+      toast({
+        title: 'Export successful',
+        description: `Your diagram has been exported as ${format === 'mmd' ? '.mmd' : '.flowilham'} file.`,
+      });
+    } catch (error) {
+      console.error('Code export error:', error);
+      toast({
+        title: 'Export failed',
+        description: 'There was an error exporting your diagram.',
+        variant: 'destructive',
+      });
+    }
+  };
+
 
   return (
     <DropdownMenu>
@@ -291,6 +331,15 @@ export const ExportButton = ({ svgOutput, isValid, theme = 'default' }: ExportBu
         <DropdownMenuItem onClick={() => handleExport('jpg')} className="cursor-pointer gap-2">
           <FileImage className="h-4 w-4" />
           <span>JPG</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => handleCodeExport('mmd')} className="cursor-pointer gap-2">
+          <FileText className="h-4 w-4" />
+          <span>Mermaid Code (.mmd)</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleCodeExport('flowilham')} className="cursor-pointer gap-2">
+          <Database className="h-4 w-4" />
+          <span>Project File (.flowilham)</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -161,6 +161,26 @@ export const useDiagramEditor = () => {
     codeHistory.set(newCode);
   }, [settings.diagramType, codeHistory]);
 
+  /**
+   * Import a project/diagram with optional metadata
+   */
+  const importProject = useCallback((data: {
+    code: string;
+    diagramType?: DiagramType;
+    theme?: MermaidTheme;
+  }) => {
+    if (data.code) {
+      codeHistory.set(data.code);
+    }
+    if (data.diagramType || data.theme) {
+      setSettings(prev => ({
+        ...prev,
+        ...(data.diagramType && { diagramType: data.diagramType }),
+        ...(data.theme && { theme: data.theme }),
+      }));
+    }
+  }, [codeHistory]);
+
   return {
     code: codeHistory.state,
     diagramType: settings.diagramType,
@@ -173,6 +193,7 @@ export const useDiagramEditor = () => {
     setDiagramType,
     setTheme,
     resetToTemplate,
+    importProject,
     // Undo/Redo
     undo: codeHistory.undo,
     redo: codeHistory.redo,

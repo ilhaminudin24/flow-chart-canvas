@@ -7,10 +7,9 @@ import { CodeEditor } from './CodeEditor';
 import { DiagramPreview } from './DiagramPreview';
 import { StatusBar } from './StatusBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Code2, Eye, GripVertical, Undo2, Redo2 } from 'lucide-react';
+import { Code2, Eye, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DiagramType, MermaidTheme } from '@/types/diagram';
 
 type ViewMode = 'split' | 'code' | 'preview';
 
@@ -31,6 +30,7 @@ export const FlowEditor = () => {
     redo,
     canUndo,
     canRedo,
+    importProject,
   } = useDiagramEditor();
 
   const [viewMode, setViewMode] = useState<ViewMode>('split');
@@ -135,9 +135,11 @@ export const FlowEditor = () => {
         theme={theme}
         isValid={isValid}
         svgOutput={svgOutput}
+        code={code}
         onDiagramTypeChange={setDiagramType}
         onThemeChange={setTheme}
         onReset={resetToTemplate}
+        onImport={importProject}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={undo}

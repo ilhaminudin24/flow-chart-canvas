@@ -2,6 +2,7 @@ import { DiagramType, MermaidTheme } from '@/types/diagram';
 import { DiagramTypeSelector } from './DiagramTypeSelector';
 import { ThemeSelector } from './ThemeSelector';
 import { ExportButton } from './ExportButton';
+import { ImportButton } from './ImportButton';
 import { RotateCcw, FileText, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -11,9 +12,11 @@ interface ToolbarProps {
   theme: MermaidTheme;
   isValid: boolean;
   svgOutput: string;
+  code: string;
   onDiagramTypeChange: (type: DiagramType) => void;
   onThemeChange: (theme: MermaidTheme) => void;
   onReset: () => void;
+  onImport: (data: { code: string; diagramType?: DiagramType; theme?: MermaidTheme }) => void;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -25,9 +28,11 @@ export const Toolbar = ({
   theme,
   isValid,
   svgOutput,
+  code,
   onDiagramTypeChange,
   onThemeChange,
   onReset,
+  onImport,
   canUndo = false,
   canRedo = false,
   onUndo,
@@ -122,7 +127,9 @@ export const Toolbar = ({
           <TooltipContent>Mermaid Docs</TooltipContent>
         </Tooltip>
 
-        <ExportButton svgOutput={svgOutput} isValid={isValid} theme={theme} />
+        <ImportButton onImport={onImport} />
+
+        <ExportButton svgOutput={svgOutput} isValid={isValid} theme={theme} code={code} diagramType={diagramType} />
       </div>
     </header>
   );

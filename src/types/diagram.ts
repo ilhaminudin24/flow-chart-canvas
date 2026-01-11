@@ -1,4 +1,4 @@
-export type DiagramType = 
+export type DiagramType =
   | 'flowchart'
   | 'sequence'
   | 'class'
@@ -38,3 +38,17 @@ export interface ExportOptions {
   scale: number;
   background: 'transparent' | 'white' | 'dark';
 }
+
+export interface MermaidProjectFile {
+  version: string;
+  createdAt: string;
+  updatedAt: string;
+  diagramType: DiagramType;
+  theme: MermaidTheme;
+  code: string;
+  title?: string;
+  description?: string;
+}
+
+export type ImportableFileType = 'mmd' | 'txt' | 'flowilham' | 'json';
+

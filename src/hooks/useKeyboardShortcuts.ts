@@ -10,6 +10,7 @@ interface UseKeyboardShortcutsOptions {
     undo?: KeyboardHandler;
     redo?: KeyboardHandler;
     save?: KeyboardHandler;
+    open?: KeyboardHandler;
     reset?: KeyboardHandler;
     zoomIn?: KeyboardHandler;
     zoomOut?: KeyboardHandler;
@@ -25,6 +26,7 @@ interface UseKeyboardShortcutsOptions {
  * - Ctrl+Z: Undo
  * - Ctrl+Y / Ctrl+Shift+Z: Redo
  * - Ctrl+S: Save/Export
+ * - Ctrl+O: Open/Import
  * - Ctrl+R: Reset
  * - Ctrl+Plus: Zoom In
  * - Ctrl+Minus: Zoom Out
@@ -36,6 +38,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions) {
         undo,
         redo,
         save,
+        open,
         reset,
         zoomIn,
         zoomOut,
@@ -92,6 +95,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions) {
                         }
                         break;
 
+                    case 'o':
+                        if (open) {
+                            event.preventDefault();
+                            open();
+                        }
+                        break;
+
                     case 'e':
                         if (exportFn) {
                             event.preventDefault();
@@ -123,7 +133,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions) {
                 }
             }
         },
-        [enabled, undo, redo, save, reset, zoomIn, zoomOut, zoomReset, exportFn]
+        [enabled, undo, redo, save, open, reset, zoomIn, zoomOut, zoomReset, exportFn]
     );
 
     useEffect(() => {
