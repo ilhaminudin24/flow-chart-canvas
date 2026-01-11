@@ -6,15 +6,8 @@
   <title>FlowGen - Redirecting...</title>
   <script>
     // SPA routing fallback - preserve path for React Router
-    // Get the base path from current location
-    var basePath = '/flow-chart-canvas';
-    var path = location.pathname;
-    // Store the path relative to base for React Router to handle
-    if (path.startsWith(basePath)) {
-      path = path.slice(basePath.length) || '/';
-    }
-    sessionStorage.setItem('redirect', path + location.search);
-    location.replace(basePath + '/');
+    sessionStorage.setItem('redirect', location.pathname + location.search);
+    location.replace('/');
   </script>
 </head>
 
