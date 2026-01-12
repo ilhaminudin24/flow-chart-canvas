@@ -64,9 +64,8 @@ export const useDiagramEditor = () => {
     mermaid.initialize({
       startOnLoad: false,
       theme: settings.theme,
-      // Use 'loose' security to allow HTML labels to render properly
-      // Combined with htmlLabels: false, this ensures labels always render as SVG text
-      securityLevel: 'loose',
+      // Use 'strict' security level to prevent XSS vulnerabilities
+      securityLevel: 'strict',
       maxTextSize: 50000,
       fontFamily: 'Inter, system-ui, sans-serif',
       // Disable HTML labels to use SVG text elements which render more reliably
@@ -91,9 +90,8 @@ export const useDiagramEditor = () => {
       mermaid.initialize({
         startOnLoad: false,
         theme: theme,
-        // Use 'loose' security to allow HTML labels to render properly
-        // Combined with htmlLabels: false, this ensures labels always render as SVG text
-        securityLevel: 'loose',
+        // Use 'strict' security level to prevent XSS vulnerabilities
+        securityLevel: 'strict',
         maxTextSize: 50000,
         fontFamily: 'Inter, system-ui, sans-serif',
         // Disable HTML labels to use SVG text elements which render more reliably

@@ -100,6 +100,30 @@ export function exportAsProject(
 }
 
 /**
+ * Sanitize imported code to prevent injection attacks
+ */
+function sanitizeImportedCode(code: string): string {
+    const maxLength = 1000000;
+    if (code.length > maxLength) {
+        throw new Error('File size exceeds maximum limit (1MB)');
+    }
+
+    return code;
+}
+
+/**
+ * Validate MermaidProjectFile structure
+ */
+function validateProjectFile(obj: unknown): obj is MermaidProjectFile {
+    if (typeof obj !== 'object' || obj === null) {
+        return false;
+    }
+
+    const file = obj as Record<string, unknown>;
+    return typeof file.code === 'string';
+}
+
+/**
  * Parse imported file content based on file type
  */
 export async function parseImportedFile(file: File): Promise<{
@@ -115,34 +139,37 @@ export async function parseImportedFile(file: File): Promise<{
     // For .flowilham or .json files, try to parse as project file
     if (extension === 'flowilham' || extension === 'json') {
         try {
-            const projectFile = JSON.parse(content) as MermaidProjectFile;
+            const parsed = JSON.parse(content);
 
-            // Validate required fields
-            if (!projectFile.code || typeof projectFile.code !== 'string') {
-                throw new Error('Invalid project file: missing code');
+            if (!validateProjectFile(parsed)) {
+                throw new Error('Invalid project file: missing or invalid code field');
             }
 
+            const projectFile = parsed as MermaidProjectFile;
+
+            // Sanitize the code
+            const sanitizedCode = sanitizeImportedCode(projectFile.code);
+
             return {
-                code: projectFile.code,
+                code: sanitizedCode,
                 diagramType: projectFile.diagramType,
                 theme: projectFile.theme,
                 title: projectFile.title,
                 description: projectFile.description,
             };
         } catch (error) {
-            // If JSON parsing fails for .json file, treat as plain text
             if (extension === 'json') {
-                throw new Error('Invalid JSON project file');
+                throw error instanceof Error ? error : new Error('Invalid JSON project file');
             }
         }
     }
 
     // For .mmd and .txt files, treat as raw Mermaid code
-    // Auto-detect diagram type from content
-    const detectedType = detectDiagramType(content);
+    const sanitizedCode = sanitizeImportedCode(content);
+    const detectedType = detectDiagramType(sanitizedCode);
 
     return {
-        code: content,
+        code: sanitizedCode,
         diagramType: detectedType,
     };
 }

@@ -27,6 +27,19 @@ export const ImportButton = ({ onImport }: ImportButtonProps) => {
         if (!file) return;
 
         try {
+            const maxFileSize = 1 * 1024 * 1024;
+
+            if (file.size > maxFileSize) {
+                throw new Error('File size exceeds maximum limit of 1MB');
+            }
+
+            const allowedExtensions = ['mmd', 'txt', 'flowilham', 'json'];
+            const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+            if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+                throw new Error('Invalid file type. Only .mmd, .txt, .flowilham, and .json files are allowed.');
+            }
+
             const data = await parseImportedFile(file);
 
             onImport({
@@ -49,7 +62,6 @@ export const ImportButton = ({ onImport }: ImportButtonProps) => {
             });
         }
 
-        // Reset input so same file can be imported again
         event.target.value = '';
     };
 

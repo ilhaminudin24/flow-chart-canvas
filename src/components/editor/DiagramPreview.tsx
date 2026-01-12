@@ -5,6 +5,7 @@ import { ZoomIn, ZoomOut, RotateCcw, Move, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { sanitizeSvg } from '@/lib/svgSanitizer';
 
 interface ZoomControls {
   zoomIn: () => void;
@@ -346,7 +347,7 @@ export const DiagramPreview = ({
                 "diagram-render",
                 onRename && "[&_text]:cursor-pointer [&_text]:hover:fill-primary [&_.nodeLabel]:cursor-pointer [&_.actor]:cursor-pointer"
               )}
-              dangerouslySetInnerHTML={{ __html: svgOutput }}
+              dangerouslySetInnerHTML={{ __html: sanitizeSvg(svgOutput) }}
             />
           </motion.div>
         )}
