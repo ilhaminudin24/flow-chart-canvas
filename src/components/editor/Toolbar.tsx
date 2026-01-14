@@ -48,8 +48,8 @@ export const Toolbar = ({
       {/* Left section - Logo & Type selector */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center glow-ring">
-            <span className="text-lg">📊</span>
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center glow-ring overflow-hidden">
+            <img src="/logo.png" alt="FlowGen Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-lg font-semibold hidden sm:block">
             <span className="text-gradient">FlowGen</span>
