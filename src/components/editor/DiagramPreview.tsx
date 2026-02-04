@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, MutableRefObject, useCallback } from 'react';
 import { MermaidTheme } from '@/types/diagram';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue } from 'framer-motion';
 import { ZoomIn, ZoomOut, RotateCcw, Move, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,9 +41,11 @@ export const DiagramPreview = ({
   const diagramRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  // Use motion values for pan position (no re-render on change)
+  const panX = useMotionValue(0);
+  const panY = useMotionValue(0);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
 
   // Edit state
   const [editState, setEditState] = useState<EditState>({
@@ -53,11 +55,12 @@ export const DiagramPreview = ({
     position: { x: 0, y: 0 }
   });
 
-  const handleZoomIn = () => setScale(prev => Math.min(prev + 0.25, 3));
+  const handleZoomIn = () => setScale(prev => Math.min(prev + 0.25, 5));
   const handleZoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.25));
   const handleReset = () => {
     setScale(1);
-    setPosition({ x: 0, y: 0 });
+    panX.set(0);
+    panY.set(0);
   };
 
   // Expose zoom controls via ref for keyboard shortcuts
@@ -83,7 +86,7 @@ export const DiagramPreview = ({
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setScale(prev => Math.min(Math.max(prev + delta, 0.25), 3));
+      setScale(prev => Math.min(Math.max(prev + delta, 0.25), 5));
     }
   };
 
@@ -94,18 +97,20 @@ export const DiagramPreview = ({
     if (e.button === 0) {
       setIsDragging(true);
       dragStartRef.current = {
-        x: e.clientX - position.x,
-        y: e.clientY - position.y
+        x: e.clientX,
+        y: e.clientY,
+        startX: panX.get(),
+        startY: panY.get()
       };
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging) {
-      setPosition({
-        x: e.clientX - dragStartRef.current.x,
-        y: e.clientY - dragStartRef.current.y
-      });
+      const deltaX = e.clientX - dragStartRef.current.x;
+      const deltaY = e.clientY - dragStartRef.current.y;
+      panX.set(dragStartRef.current.startX + deltaX);
+      panY.set(dragStartRef.current.startY + deltaY);
     }
   };
 
@@ -126,7 +131,7 @@ export const DiagramPreview = ({
       const tspan = element.querySelector('tspan');
       return tspan ? tspan.textContent?.trim() || null : element.textContent?.trim() || null;
     }
-    
+
     // For rect/path with .actor class, find sibling text with same class
     const parent = element.parentElement;
     if (parent) {
@@ -137,7 +142,7 @@ export const DiagramPreview = ({
         return tspan ? tspan.textContent?.trim() || null : siblingText.textContent?.trim() || null;
       }
     }
-    
+
     return null;
   };
 
@@ -149,9 +154,9 @@ export const DiagramPreview = ({
 
     const target = e.target as Element;
     const tagName = target.tagName.toLowerCase();
-    
+
     let text = '';
-    
+
     // Direct click on tspan - cleanest case
     if (tagName === 'tspan') {
       text = target.textContent?.trim() || '';
@@ -184,15 +189,15 @@ export const DiagramPreview = ({
     else if (tagName === 'span' || tagName === 'div' || tagName === 'p') {
       text = (target as HTMLElement).innerText?.trim() || '';
     }
-    
+
     // Only proceed if we found valid text
     if (!text) return;
-    
+
     // Filter out CSS-like content (safety check)
     if (text.includes('{') || text.includes('}') || text.match(/#[a-f0-9]{6,}/i)) {
       return;
     }
-    
+
     e.stopPropagation();
     e.preventDefault();
 
@@ -335,10 +340,13 @@ export const DiagramPreview = ({
             ref={diagramRef}
             className="absolute inset-0 flex items-center justify-center p-8"
             style={{
-              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              x: panX,
+              y: panY,
+              scale: scale,
+              touchAction: 'none'
             }}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: scale }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
             onClick={handleDiagramClick}
           >
